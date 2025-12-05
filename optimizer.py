@@ -5,7 +5,7 @@ I modified optimizer to use name of the parameter for preventing prunned weights
 
 import math
 from collections import defaultdict
-from torch._six import container_abcs
+from collections.abc import Iterable
 import torch
 from copy import deepcopy
 from itertools import chain
@@ -136,7 +136,7 @@ class NameOptimizer(object):
                 return value
             elif isinstance(value, dict):
                 return {k: cast(param, v) for k, v in value.items()}
-            elif isinstance(value, container_abcs.Iterable):
+            elif isinstance(value, Iterable):
                 return type(value)(cast(param, v) for v in value)
             else:
                 return value
@@ -309,8 +309,15 @@ class PruneAdam(NameOptimizer):
                     grad.add_(group['weight_decay'], p.data)
 
                 # Decay the first and second moment running average coefficient
-                exp_avg.mul_(beta1).add_(1 - beta1, grad)
-                exp_avg_sq.mul_(beta2).addcmul_(1 - beta2, grad, grad)
+                # --- momentum (first moment) ---
+                if beta1 != 1:
+                    # Old:  exp_avg.mul_(beta1).add_(1 - beta1, grad)
+                    exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
+
+                # --- second moment (RMSprop / Adam part) ---
+                if beta2 != 1:
+                    # Old:  exp_avg_sq.mul_(beta2).addcmul_(1 - beta2, grad, grad)
+                    exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
                 if amsgrad:
                     # Maintains the maximum of all 2nd moment running avg. till now
                     torch.max(max_exp_avg_sq, exp_avg_sq, out=max_exp_avg_sq)
@@ -323,7 +330,7 @@ class PruneAdam(NameOptimizer):
                 bias_correction2 = 1 - beta2 ** state['step']
                 step_size = group['lr'] * math.sqrt(bias_correction2) / bias_correction1
 
-                p.data.addcdiv_(-step_size, exp_avg, denom)
+                p.data.addcdiv_(exp_avg, denom, value=-step_size)
 
         return loss
 

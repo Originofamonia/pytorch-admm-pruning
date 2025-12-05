@@ -79,9 +79,9 @@ def retrain(args, model, mask, device, train_loader, test_loader, optimizer):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--dataset', type=str, default="mnist", choices=["mnist", "cifar10"],
+    parser.add_argument('--dataset', type=str, default="cifar10", choices=["mnist", "cifar10"],
                         metavar='D', help='training dataset (mnist or cifar10)')
-    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=1024, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                         help='input batch size for testing (default: 1000)')
@@ -117,7 +117,7 @@ def main():
 
     torch.manual_seed(args.seed)
 
-    device = torch.device("cuda" if use_cuda else "cpu")
+    device = torch.device("cuda:1" if use_cuda else "cpu")
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 
